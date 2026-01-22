@@ -29,12 +29,11 @@ const Booking = () => {
       setSelectedSeat(seat);
       setSelectedSection(section);
       
-      // Navigate to payment with seat info
+      // Navigate to payment with seat info (only seat data from Redis, no event data)
       navigate('/payment', {
         state: {
           seat: seat,
           section: section,
-          event: eventData,
         },
       });
     } else {
@@ -83,7 +82,6 @@ const Booking = () => {
         state: {
           seat: randomSeat,
           section: section,
-          event: eventData,
         },
       });
     } else {

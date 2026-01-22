@@ -10,7 +10,11 @@ const Payment = () => {
   const { paymentLoading, payForBooking } = useSeats();
   
   // Get booking data from navigation state
-  const { seat, section, bookingId, expiresIn, userId } = location.state || {};
+  const { seats, section, bookingId, expiresIn, userId, count } = location.state || {};
+  
+  // For backward compatibility - if single seat was passed
+  const bookedSeats = seats || [];
+  const seatCount = count || bookedSeats.length;
   
   // User form state
   const [userName, setUserName] = useState('');
@@ -25,15 +29,15 @@ const Payment = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(null); // null, 'success', 'failed'
 
-  console.log("[Payment] Component loaded with state:", { seat, section, bookingId, expiresIn, userId });
+  console.log("[Payment] Component loaded with state:", { seats, section, bookingId, expiresIn, userId, count });
 
   // Redirect if no booking data
   useEffect(() => {
-    if (!seat || !section || !bookingId) {
+    if (!bookedSeats.length || !section || !bookingId) {
       console.warn("[Payment] Missing required data, redirecting to home");
       navigate('/');
     }
-  }, [seat, section, bookingId, navigate]);
+  }, [bookedSeats, section, bookingId, navigate]);
 
   // Countdown timer - starts immediately when payment page loads
   useEffect(() => {
@@ -116,9 +120,15 @@ const Payment = () => {
   };
 
   // If no data, show nothing (will redirect)
-  if (!seat || !section || !bookingId) {
+  if (!bookedSeats.length || !section || !bookingId) {
     return null;
   }
+
+  // Helper to get seat IDs as string
+  const getSeatIdsString = () => bookedSeats.map(s => s.seatId).join(', ');
+
+  // Calculate total price
+  const totalPrice = section.price * seatCount;
 
   // Success Screen
   if (paymentStatus === 'success') {
@@ -128,13 +138,13 @@ const Payment = () => {
           <div className={styles.successIcon}>✓</div>
           <h1>Booking Confirmed!</h1>
           <p className={styles.confirmationText}>
-            Your seat has been successfully booked.
+            {seatCount > 1 ? `Your ${seatCount} seats have` : 'Your seat has'} been successfully booked.
           </p>
           
           <div className={styles.ticketDetails}>
             <div className={styles.ticketHeader}>
               <span className={styles.ticketLabel}>E-TICKET</span>
-              <span className={styles.ticketId}>#{Math.random().toString(36).substring(2, 10).toUpperCase()}</span>
+              <span className={styles.ticketId}>#{bookingId.substring(0, 8).toUpperCase()}</span>
             </div>
             
             <div className={styles.ticketBody}>
@@ -152,12 +162,12 @@ const Payment = () => {
                   <span className={styles.value}>{section.sectionName}</span>
                 </div>
                 <div className={styles.infoBox}>
-                  <span className={styles.label}>Seat</span>
-                  <span className={styles.value}>{seat.seatId}</span>
+                  <span className={styles.label}>{seatCount > 1 ? 'Seats' : 'Seat'}</span>
+                  <span className={styles.value}>{getSeatIdsString()}</span>
                 </div>
                 <div className={styles.infoBox}>
-                  <span className={styles.label}>Price</span>
-                  <span className={styles.value}>₹{section.price.toLocaleString()}</span>
+                  <span className={styles.label}>Total</span>
+                  <span className={styles.value}>₹{totalPrice.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -201,7 +211,7 @@ const Payment = () => {
 
               {/* Booking Summary */}
               <div className={styles.summary}>
-                <h3>Seat Reserved</h3>
+                <h3>{seatCount > 1 ? `${seatCount} Seats Reserved` : 'Seat Reserved'}</h3>
                 
                 <div className={styles.seatDetails}>
                   <div className={styles.detail}>
@@ -209,8 +219,8 @@ const Payment = () => {
                     <span>{section.sectionName}</span>
                   </div>
                   <div className={styles.detail}>
-                    <span>Seat Number</span>
-                    <span>{seat.seatId}</span>
+                    <span>{seatCount > 1 ? 'Seats' : 'Seat Number'}</span>
+                    <span>{getSeatIdsString()}</span>
                   </div>
                   <div className={styles.detail}>
                     <span>Status</span>
@@ -218,7 +228,7 @@ const Payment = () => {
                   </div>
                   <div className={`${styles.detail} ${styles.total}`}>
                     <span>Total Amount</span>
-                    <span>₹{section.price.toLocaleString()}</span>
+                    <span>₹{totalPrice.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -338,12 +348,12 @@ const Payment = () => {
                   <span>{section.sectionName}</span>
                 </div>
                 <div className={styles.detail}>
-                  <span>Seat Number</span>
-                  <span>{seat.seatId}</span>
+                  <span>{seatCount > 1 ? 'Seats' : 'Seat Number'}</span>
+                  <span>{getSeatIdsString()}</span>
                 </div>
                 <div className={`${styles.detail} ${styles.total}`}>
                   <span>Total Amount</span>
-                  <span>₹{section.price.toLocaleString()}</span>
+                  <span>₹{totalPrice.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -369,7 +379,7 @@ const Payment = () => {
               ) : paymentStatus === 'failed' ? (
                 'Retry Payment'
               ) : (
-                `Pay ₹${section.price.toLocaleString()}`
+                `Pay ₹${totalPrice.toLocaleString()}`
               )}
             </button>
 

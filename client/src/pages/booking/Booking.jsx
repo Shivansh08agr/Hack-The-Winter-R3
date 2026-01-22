@@ -5,8 +5,9 @@ import { eventData, seatLayout, transformSeatsData } from '../../data/mockData';
 import { errorToast, successToast, infoToast } from '../../lib/toast';
 import { useSeats } from '../../api';
 
-// Temporary user ID - in production, get from auth
-const TEMP_USER_ID = "user-" + Math.random().toString(36).substring(2, 9);
+// User ID - in production, get from auth
+// Using a fixed ID for demo purposes
+const USER_ID = "4";
 
 const Booking = () => {
   const navigate = useNavigate();
@@ -52,9 +53,8 @@ const Booking = () => {
 
     bookSeat(
       {
-        seatId: seat.seatId,
-        sectionId: section.sectionId,
-        userId: TEMP_USER_ID,
+        seats: [{ seatId: seat.seatId, sectionId: section.sectionId }],
+        userId: USER_ID,
       },
       (data, error) => {
         if (error) {
@@ -75,11 +75,12 @@ const Booking = () => {
         // Navigate to payment with booking info
         navigate('/payment', {
           state: {
-            seat: seat,
+            seats: data.seats || [{ seatId: seat.seatId, sectionId: section.sectionId }],
             section: section,
             bookingId: data.bookingId,
             expiresIn: data.expiresIn,
-            userId: TEMP_USER_ID,
+            userId: USER_ID,
+            count: data.count || 1,
           },
         });
 
@@ -117,9 +118,8 @@ const Booking = () => {
 
     bookSeat(
       {
-        seatId: randomSeat.seatId,
-        sectionId: section.sectionId,
-        userId: TEMP_USER_ID,
+        seats: [{ seatId: randomSeat.seatId, sectionId: section.sectionId }],
+        userId: USER_ID,
       },
       (data, error) => {
         if (error) {
@@ -136,11 +136,12 @@ const Booking = () => {
         
         navigate('/payment', {
           state: {
-            seat: randomSeat,
+            seats: data.seats || [{ seatId: randomSeat.seatId, sectionId: section.sectionId }],
             section: section,
             bookingId: data.bookingId,
             expiresIn: data.expiresIn,
-            userId: TEMP_USER_ID,
+            userId: USER_ID,
+            count: data.count || 1,
           },
         });
 
@@ -254,7 +255,7 @@ const Booking = () => {
                           <span className={styles.bookedIcon}>✕</span>
                         ) : (
                           <span className={styles.seatNumber}>
-                            {seat.seatId.split('-')[1]}
+                            {seat.seatId}
                           </span>
                         )}
                       </div>

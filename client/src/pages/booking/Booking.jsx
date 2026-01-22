@@ -9,13 +9,14 @@ import { useSeats } from '../../api';
 // Using a fixed ID for demo purposes
 const USER_ID = "4";
 
+const MAX_SEATS = 4;
+
 const Booking = () => {
   const navigate = useNavigate();
   const { seatsLoading, bookingLoading, getSeats, bookSeat } = useSeats();
   
   const [seats, setSeats] = useState(null);
-  const [selectedSeat, setSelectedSeat] = useState(null);
-  const [selectedSection, setSelectedSection] = useState(null);
+  const [selectedSeats, setSelectedSeats] = useState([]); // Array of {seat, section}
   const [isLoading, setIsLoading] = useState(false);
   const [loadingSeatId, setLoadingSeatId] = useState(null);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -44,50 +45,92 @@ const Booking = () => {
     });
   };
 
-  // Handle individual seat click
-  const handleSeatClick = async (seat, section) => {
+  // Handle individual seat click - toggle selection
+  const handleSeatClick = (seat, section) => {
     if (seat.status !== 'AVAILABLE' || isLoading || bookingLoading) return;
 
+    const isAlreadySelected = selectedSeats.some(s => s.seat.seatId === seat.seatId);
+
+    if (isAlreadySelected) {
+      // Deselect the seat
+      setSelectedSeats(prev => prev.filter(s => s.seat.seatId !== seat.seatId));
+    } else {
+      // Check if max seats reached
+      if (selectedSeats.length >= MAX_SEATS) {
+        errorToast(`You can select maximum ${MAX_SEATS} seats at a time`);
+        return;
+      }
+      // Check if same section (all selected seats must be from same section)
+      if (selectedSeats.length > 0 && selectedSeats[0].section.sectionId !== section.sectionId) {
+        errorToast('Please select seats from the same section');
+        return;
+      }
+      // Add to selection
+      setSelectedSeats(prev => [...prev, { seat, section }]);
+      infoToast(`${seat.seatId} selected (${selectedSeats.length + 1}/${MAX_SEATS})`);
+    }
+  };
+
+  // Confirm and book selected seats
+  const handleConfirmBooking = () => {
+    if (selectedSeats.length === 0 || isLoading || bookingLoading) return;
+
+    const section = selectedSeats[0].section;
+    const seatsToBook = selectedSeats.map(s => ({
+      seatId: s.seat.seatId,
+      sectionId: s.section.sectionId,
+    }));
+
     setIsLoading(true);
-    setLoadingSeatId(seat.seatId);
+    infoToast(`Reserving ${selectedSeats.length} seat(s)...`);
 
     bookSeat(
       {
-        seats: [{ seatId: seat.seatId, sectionId: section.sectionId }],
+        seats: seatsToBook,
         userId: USER_ID,
       },
       (data, error) => {
         if (error) {
-          console.error("[Booking] Book seat error:", error);
-          // Update seat status to show it's now taken
+          console.error("[Booking] Book seats error:", error);
           if (error?.error === "SEAT_ALREADY_TAKEN") {
-            updateSeatStatus(seat.seatId, 'BOOKED');
+            // Update the taken seat status
+            if (error.seatId) {
+              updateSeatStatus(error.seatId, 'BOOKED');
+              setSelectedSeats(prev => prev.filter(s => s.seat.seatId !== error.seatId));
+            }
           }
           setIsLoading(false);
-          setLoadingSeatId(null);
           return;
         }
 
-        successToast(`Seat ${seat.seatId} reserved!`);
-        setSelectedSeat(seat);
-        setSelectedSection(section);
+        successToast(`${selectedSeats.length} seat(s) reserved!`);
 
         // Navigate to payment with booking info
         navigate('/payment', {
           state: {
-            seats: data.seats || [{ seatId: seat.seatId, sectionId: section.sectionId }],
+            seats: data.seats || seatsToBook,
             section: section,
             bookingId: data.bookingId,
             expiresIn: data.expiresIn,
             userId: USER_ID,
-            count: data.count || 1,
+            count: data.count || selectedSeats.length,
           },
         });
 
+        setSelectedSeats([]);
         setIsLoading(false);
-        setLoadingSeatId(null);
       }
     );
+  };
+
+  // Clear selection
+  const handleClearSelection = () => {
+    setSelectedSeats([]);
+  };
+
+  // Check if a seat is selected
+  const isSeatSelected = (seatId) => {
+    return selectedSeats.some(s => s.seat.seatId === seatId);
   };
 
   // Handle section-based booking (auto-assign)
@@ -173,6 +216,7 @@ const Booking = () => {
     if (seat.status === 'BOOKED') classes += ` ${styles.booked}`;
     if (seat.status === 'HOLD') classes += ` ${styles.hold}`;
     if (seat.status === 'AVAILABLE') classes += ` ${styles.available}`;
+    if (isSeatSelected(seat.seatId)) classes += ` ${styles.selected}`;
     if (loadingSeatId === seat.seatId) classes += ` ${styles.loading}`;
     return classes;
   };
@@ -275,6 +319,10 @@ const Booking = () => {
           <span>Available</span>
         </div>
         <div className={styles.legendItem}>
+          <div className={`${styles.legendBox} ${styles.selected}`}></div>
+          <span>Selected</span>
+        </div>
+        <div className={styles.legendItem}>
           <div className={`${styles.legendBox} ${styles.hold}`}></div>
           <span>On Hold</span>
         </div>
@@ -284,12 +332,45 @@ const Booking = () => {
         </div>
       </div>
 
+      {/* Selection Bar - shown when seats are selected */}
+      {selectedSeats.length > 0 && (
+        <div className={styles.selectionBar}>
+          <div className={styles.selectionInfo}>
+            <span className={styles.selectionCount}>
+              {selectedSeats.length} seat{selectedSeats.length > 1 ? 's' : ''} selected
+            </span>
+            <span className={styles.selectedSeats}>
+              {selectedSeats.map(s => s.seat.seatId).join(', ')}
+            </span>
+            <span className={styles.selectionTotal}>
+              Total: {eventData.currency}{(selectedSeats[0]?.section.price * selectedSeats.length).toLocaleString()}
+            </span>
+          </div>
+          <div className={styles.selectionActions}>
+            <button 
+              className={styles.clearButton}
+              onClick={handleClearSelection}
+              disabled={isLoading}
+            >
+              Clear
+            </button>
+            <button 
+              className={styles.confirmButton}
+              onClick={handleConfirmBooking}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Booking...' : `Book ${selectedSeats.length} Seat${selectedSeats.length > 1 ? 's' : ''}`}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Loading Overlay */}
       {isLoading && (
         <div className={styles.loadingOverlay}>
           <div className={styles.loadingContent}>
             <div className={styles.loadingSpinner}></div>
-            <p>Checking availability...</p>
+            <p>Reserving seats...</p>
           </div>
         </div>
       )}

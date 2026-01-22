@@ -14,6 +14,7 @@ $gray-light: #9ca3af;
   min-height: 100vh;
   background-color: $black;
   padding: 2rem;
+  padding-bottom: 8rem; // Space for selection bar
   color: $white;
 }
 
@@ -209,6 +210,17 @@ $gray-light: #9ca3af;
   cursor: not-allowed;
 }
 
+.selected {
+  background-color: $gold !important;
+  border: 2px solid $gold-light !important;
+  transform: scale(1.1);
+
+  .seatNumber {
+    color: $black !important;
+    font-weight: 700;
+  }
+}
+
 .loading {
   background-color: $gold !important;
   border-color: $gold-light !important;
@@ -268,6 +280,99 @@ $gray-light: #9ca3af;
       background-color: #2a2a2a;
       border: 1px solid #3f3f3f;
     }
+
+    &.selected {
+      background-color: $gold;
+      border: 2px solid $gold-light;
+    }
+  }
+}
+
+// Selection Bar
+.selectionBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(180deg, $dark 0%, $black 100%);
+  border-top: 2px solid $gold;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+
+  .selectionInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    .selectionCount {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: $gold;
+    }
+
+    .selectedSeats {
+      font-size: 0.85rem;
+      color: $gray-light;
+    }
+
+    .selectionTotal {
+      font-size: 1rem;
+      font-weight: 600;
+      color: $white;
+    }
+  }
+
+  .selectionActions {
+    display: flex;
+    gap: 1rem;
+
+    .clearButton {
+      background-color: transparent;
+      color: $gray-light;
+      border: 1px solid $gray;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover:not(:disabled) {
+        background-color: #333;
+        color: $white;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    .confirmButton {
+      background-color: $red;
+      color: $white;
+      border: none;
+      padding: 0.75rem 2rem;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover:not(:disabled) {
+        background-color: $red-dark;
+        transform: scale(1.02);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
   }
 }
 
@@ -310,6 +415,7 @@ $gray-light: #9ca3af;
 @media (max-width: 768px) {
   .container {
     padding: 1rem;
+    padding-bottom: 10rem;
   }
 
   .eventHeader h1 {
@@ -339,5 +445,25 @@ $gray-light: #9ca3af;
   .legend {
     gap: 1rem;
     flex-wrap: wrap;
+  }
+
+  .selectionBar {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+
+    .selectionInfo {
+      text-align: center;
+      width: 100%;
+    }
+
+    .selectionActions {
+      width: 100%;
+      justify-content: center;
+
+      .confirmButton {
+        flex: 1;
+      }
+    }
   }
 }

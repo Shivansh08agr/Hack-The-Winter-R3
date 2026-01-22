@@ -2,9 +2,12 @@ import { io as ioClient } from "socket.io-client";
 
 let socket = null;
 
+// Get Socket.IO server URL from environment
+const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || "http://localhost:3001";
+
 function getSocket() {
   if (!socket) {
-    socket = ioClient("http://localhost:3001", {
+    socket = ioClient(SOCKET_SERVER_URL, {
       transports: ["websocket"],
       reconnection: true,
       reconnectionDelay: 1000,
@@ -12,7 +15,7 @@ function getSocket() {
     });
 
     socket.on("connect", () => {
-      console.log("[SocketEmit] Connected to Socket.IO server:", socket.id);
+      console.log("[SocketEmit] Connected to Socket.IO server:", socket.id, "at", SOCKET_SERVER_URL);
     });
 
     socket.on("disconnect", () => {

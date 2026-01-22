@@ -2,13 +2,25 @@ const { createServer } = require("http");
 const { Server } = require("socket.io");
 const httpProxy = require("http-proxy");
 
-const NEXT_SERVER = "http://localhost:3000";
-const SOCKET_PORT = 3001;
+// Environment variables
+const NEXT_SERVER = process.env.NEXT_SERVER_URL || "http://localhost:3000";
+const SOCKET_PORT = process.env.PORT || 3001;
+const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(",") 
+  : [CLIENT_URL, NEXT_SERVER, "http://localhost:5173", "http://localhost:3000"];
+
+console.log("🚀 Server Configuration:");
+console.log("  - Next.js API:", NEXT_SERVER);
+console.log("  - Socket.IO Port:", SOCKET_PORT);
+console.log("  - Client URL:", CLIENT_URL);
+console.log("  - Allowed Origins:", ALLOWED_ORIGINS);
 
 // Create proxy to Next.js server
 const proxy = httpProxy.createProxyServer({
   target: NEXT_SERVER,
   ws: true,
+  changeOrigin: true,
 });
 
 const httpServer = createServer((req, res) => {
@@ -17,15 +29,16 @@ const httpServer = createServer((req, res) => {
     if (err) {
       console.error("Proxy error:", err);
       res.writeHead(502, { "Content-Type": "text/plain" });
-      res.end("Bad Gateway - Next.js server not running on port 3000");
+      res.end(`Bad Gateway - Next.js server not available at ${NEXT_SERVER}`);
     }
   });
 });
 
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:3000"],
+    origin: ALLOWED_ORIGINS,
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 
@@ -109,8 +122,16 @@ io.on("connection", (socket) => {
   });
 });
 
-httpServer.listen(SOCKET_PORT, () =>
-  console.log(`Socket.IO server running on http://localhost:${SOCKET_PORT}`)
-);
+httpServer.listen(SOCKET_PORT, () => {
+  console.log(`✅ Socket.IO server running on port ${SOCKET_PORT}`);
+  console.log(`✅ Proxying HTTP requests to Next.js at ${NEXT_SERVER}`);
+});
 
-console.log(`Proxying HTTP requests to Next.js at ${NEXT_SERVER}`);
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  httpServer.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});

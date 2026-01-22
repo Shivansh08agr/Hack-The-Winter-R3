@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { getAllSeats, initDB } from "@/lib/db";
 import { redis } from "@/lib/redis";
-import { isHeld } from "@/lib/locks";
+import { isHeld, getRedisSeatStatus } from "@/lib/locks";
 
 let dbInitialized = false;
 
@@ -20,8 +20,13 @@ export async function GET() {
     for (const seat of seats) {
       let status = seat.status;
 
-      // If not booked, check Redis HOLD
-      if (status === "AVAILABLE") {
+      // Check Redis Authoritative Status first
+      const redisStatus = await getRedisSeatStatus(seat.seat_id);
+      
+      if (redisStatus) {
+        status = redisStatus;
+      } else if (status === "AVAILABLE") {
+        // Fallback for race conditions or legacy holds
         const held = await isHeld(seat.seat_id);
         if (held) status = "HOLD";
       }

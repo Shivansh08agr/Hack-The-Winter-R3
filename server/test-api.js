@@ -1,4 +1,4 @@
-const baseURL = "http://localhost:3000/api";
+const baseURL = process.env.API_URL || "http://localhost:3000/api";
 
 async function testAPI() {
   try {

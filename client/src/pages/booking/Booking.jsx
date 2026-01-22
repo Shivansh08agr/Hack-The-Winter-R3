@@ -4,6 +4,8 @@ import styles from './Booking.module.scss';
 import { eventData, seatLayout, transformSeatsData } from '../../data/mockData';
 import { errorToast, successToast, infoToast } from '../../lib/toast';
 import { useSeats } from '../../api';
+import { socket } from "../../lib/socket";
+
 
 // User ID - in production, get from auth
 // Using a fixed ID for demo purposes
@@ -25,6 +27,58 @@ const Booking = () => {
   useEffect(() => {
     fetchSeats();
   }, []);
+
+   const updateSeatStatus = (seatId, newStatus) => {
+    setSeats((prevSeats) => {
+      const newSeats = { ...prevSeats };
+      newSeats.sections = newSeats.sections.map((section) => ({
+        ...section,
+        rows: section.rows.map((row) =>
+          row.map((seat) =>
+            seat.seatId === seatId ? { ...seat, status: newStatus } : seat
+          )
+        ),
+      }));
+      return newSeats;
+    });
+  };
+
+// ✅ SOCKET: Listen for realtime seat updates (MUST be top-level)
+useEffect(() => {
+  console.log("[Socket] init listeners");
+
+  socket.on("connect", () => {
+    console.log("[Socket] Connected:", socket.id);
+  });
+
+  socket.on("seat:update", (data) => {
+    console.log("[Socket] seat:update", data);
+
+    const { seatId, status } = data;
+    if (!seatId || !status) return;
+
+    // backend emits HELD, UI uses HOLD
+    const uiStatus = status === "HELD" ? "HOLD" : status;
+
+    updateSeatStatus(seatId, uiStatus);
+
+    // If seat is not available, remove it from selected list
+    if (uiStatus !== "AVAILABLE") {
+      setSelectedSeats((prev) => prev.filter((s) => s.seat.seatId !== seatId));
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("[Socket] Disconnected");
+  });
+
+  return () => {
+    socket.off("connect");
+    socket.off("seat:update");
+    socket.off("disconnect");
+  };
+}, []);
+
 
   const fetchSeats = () => {
     getSeats((data, error) => {
@@ -192,22 +246,6 @@ const Booking = () => {
         setLoadingSeatId(null);
       }
     );
-  };
-
-  // Update seat status in state
-  const updateSeatStatus = (seatId, newStatus) => {
-    setSeats((prevSeats) => {
-      const newSeats = { ...prevSeats };
-      newSeats.sections = newSeats.sections.map((section) => ({
-        ...section,
-        rows: section.rows.map((row) =>
-          row.map((seat) =>
-            seat.seatId === seatId ? { ...seat, status: newStatus } : seat
-          )
-        ),
-      }));
-      return newSeats;
-    });
   };
 
   // Get seat class based on status

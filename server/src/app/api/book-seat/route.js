@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { getSeat, initDB } from "@/lib/db";
 import { HOLD_TTL_SECONDS, createHold, createMultipleHolds, isHeld } from "@/lib/locks";
+import { emitSeatUpdate } from "@/lib/socketEmit";
 
 let dbInitialized = false;
 
@@ -85,6 +86,13 @@ export async function POST(req) {
           seatId: seat.seatId 
         }, { status: 409 });
       }
+emitSeatUpdate({
+  seatId: seat.seatId,
+  status: "HELD",
+  bookingId,
+  holdUntil: Date.now() + HOLD_TTL_SECONDS * 1000,
+});
+
 
       return NextResponse.json({
         bookingId,
@@ -102,6 +110,16 @@ export async function POST(req) {
           error: "SEAT_ALREADY_TAKEN",
           message: "One or more seats became unavailable during booking"
         }, { status: 409 });
+      }
+
+      // Emit seat updates for all booked seats
+      for (const seat of seatsToBook) {
+        emitSeatUpdate({
+          seatId: seat.seatId,
+          status: "HELD",
+          bookingId,
+          holdUntil: Date.now() + HOLD_TTL_SECONDS * 1000,
+        });
       }
 
       // Return single booking with multiple seats

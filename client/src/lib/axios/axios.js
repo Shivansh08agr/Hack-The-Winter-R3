@@ -1,8 +1,7 @@
 import axios from "axios";
 import { SLICE_NAMES } from "../../constants/enums";
 import { errorToast } from "../toast";
-import { useSelector } from "react-redux";
-// instance
+
 const axios_instance = axios.create({
   baseURL: `${import.meta.env.VITE_DEPLOYED_BACKEND_HOSTNAME}`,
   headers: {

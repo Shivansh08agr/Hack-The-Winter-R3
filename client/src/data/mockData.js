@@ -10,7 +10,69 @@ export const eventData = {
   currency: "₹",
 };
 
-// 2D array based seat layout
+// Section configuration - maps backend section IDs to display info
+export const sectionConfig = {
+  A: {
+    sectionId: "A",
+    sectionName: "Gold",
+    price: 15000,
+    seatsPerRow: 8,
+  },
+  B: {
+    sectionId: "B",
+    sectionName: "Silver",
+    price: 8000,
+    seatsPerRow: 10,
+  },
+  C: {
+    sectionId: "C",
+    sectionName: "Bronze",
+    price: 4000,
+    seatsPerRow: 12,
+  },
+};
+
+// Helper function to transform API response to UI format
+export const transformSeatsData = (apiSections) => {
+  console.log("[transformSeatsData] Input sections:", apiSections);
+  
+  const sections = apiSections.map((apiSection) => {
+    const config = sectionConfig[apiSection.sectionId];
+    
+    if (!config) {
+      console.warn(`[transformSeatsData] Unknown section: ${apiSection.sectionId}`);
+      return null;
+    }
+
+    // Sort seats by numeric value (A1, A2, ... A10, A11, etc.)
+    const sortedSeats = [...apiSection.seats].sort((a, b) => {
+      const numA = parseInt(a.seatId.substring(1));
+      const numB = parseInt(b.seatId.substring(1));
+      return numA - numB;
+    });
+
+    // Convert flat seat array to 2D rows array
+    const rows = [];
+    for (let i = 0; i < sortedSeats.length; i += config.seatsPerRow) {
+      const row = sortedSeats.slice(i, i + config.seatsPerRow);
+      rows.push(row);
+    }
+
+    console.log(`[transformSeatsData] Section ${apiSection.sectionId}: ${sortedSeats.length} seats, ${rows.length} rows`);
+
+    return {
+      sectionId: apiSection.sectionId,
+      sectionName: config.sectionName,
+      price: config.price,
+      rows,
+    };
+  }).filter(Boolean); // Remove null entries
+
+  console.log("[transformSeatsData] Output sections:", sections);
+  return { sections };
+};
+
+// 2D array based seat layout (MOCK - kept for fallback/reference)
 // Each section has rows (array) and each row has seats (array)
 // Status: "AVAILABLE" | "HOLD" | "BOOKED"
 export const seatLayout = {
